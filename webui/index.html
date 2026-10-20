@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Folder Sweeper · 文件夹自动清理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f6;color:#1f2937}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px 40px}
+.header{text-align:center;margin-bottom:24px}
+.header h1{font-size:24px;font-weight:700}
+.header .sub{font-size:12px;color:#6b7280;margin-top:4px}
+.layout{display:grid;grid-template-columns:320px 1fr 360px;gap:16px;align-items:start}
+@media(max-width:1024px){.layout{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-title{font-size:13px;font-weight:600;color:#374151;margin-bottom:12px}
+.log-panel{background:#0f172a;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.log-head{color:#e2e8f0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.log-head .left{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.log-head .chev{font-size:10px;transition:transform .2s}
+.log-panel.open .log-head .chev{transform:rotate(90deg)}
+.log-actions{display:flex;gap:6px}
+.log-actions button{background:rgba(255,255,255,.1);color:#cbd5e1;border:0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer}
+.log-body{max-height:0;overflow:hidden;transition:max-height .3s}
+.log-panel.open .log-body{max-height:calc(100vh - 200px);overflow-y:auto}
+.log-pre{color:#a7f3d0;font-size:11px;line-height:1.7;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}
+.log-body::-webkit-scrollbar{width:6px}
+.log-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+.status-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.status-icon{width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.status-path{font-size:14px;font-weight:600;color:#1e40af;word-break:break-all}
+.status-meta{font-size:11px;color:#9ca3af;margin-top:2px}
+.size-row{display:flex;align-items:baseline;gap:10px;margin:14px 0 8px}
+.size{font-size:36px;font-weight:700;color:#2563eb;line-height:1}
+.size.over{color:#dc2626}
+.size-sub{font-size:13px;color:#6b7280}
+.bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.bar>div{height:100%;background:#2563eb;width:0;transition:width .4s}
+.bar>div.over{background:#dc2626}
+.bar-text{font-size:11px;color:#6b7280;margin-top:5px}
+.disk-info{font-size:11px;color:#9ca3af;margin-top:10px;padding-top:10px;border-top:1px dashed #e5e7eb}
+label{display:block;font-size:12px;color:#4b5563;margin-top:12px}
+input{width:100%;padding:9px 10px;margin-top:4px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.path-row{display:flex;gap:8px}.path-row input{flex:1}
+button{border:0;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-secondary{background:#f3f4f6;color:#374151}
+.btn-row{display:flex;gap:10px;margin-top:16px}.btn-row button{flex:1}
+.run-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.run-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f9fafb}
+.run-head .time{font-size:12px;font-weight:600}
+.run-head .freed{font-size:11px;color:#2563eb;margin-left:auto;font-weight:600}
+.run-body{padding:8px 12px;border-top:1px solid #f3f4f6}
+.file-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f9fafb;cursor:pointer}
+.file-row:hover{background:#f0f4ff}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.stat-item{padding:8px 10px;border-radius:8px;background:#f9fafb}
+.stat-item .si-name{font-size:11px;color:#6b7280}
+.stat-item .si-val{font-size:16px;font-weight:700;margin-top:2px}
+.stat-item .si-size{font-size:10px;color:#9ca3af}
+.si-video .si-val{color:#8b5cf6}.si-image .si-val{color:#ec4899}.si-audio .si-val{color:#06b6d4}
+.si-doc .si-val{color:#6b7280}.si-archive .si-val{color:#f59e0b}.si-sub .si-val{color:#10b981}
+.file-ext{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;font-size:8px;font-weight:700;color:#fff;text-transform:uppercase;flex-shrink:0}
+.file-name{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-size:12px;font-weight:600;color:#2563eb;flex-shrink:0}
+#msg{text-align:center;font-size:13px;color:#16a34a;min-height:20px;margin-top:12px}
+.empty{color:#9ca3af;text-align:center;padding:24px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header"><h1>🧹 Folder Sweeper</h1><div class="sub">自动清理 · 超阈值按修改时间删除最旧文件</div></div>
+<div class="layout">
+<div class="log-panel" id="logPanel">
+<div class="log-head" onclick="toggleLog()"><div class="left"><span class="chev">▶</span> 📋 运行日志</div><div class="log-actions" onclick="event.stopPropagation()"><button onclick="copyLog()">复制</button><button onclick="exportLog()">导出</button></div></div>
+<div class="log-body"><div class="log-pre" id="log">加载中…</div></div>
+</div>
+<div>
+<div class="card">
+<div class="status-row"><div class="status-icon">📁</div><div><div class="status-path" id="watchPath">加载中…</div><div class="status-meta" id="watchMeta">--</div></div></div>
+<div class="size-row"><div class="size" id="size">--</div><div class="size-sub">/ <span id="thresholdText">--</span></div></div>
+<div class="bar"><div id="barFill"></div></div>
+<div class="bar-text" id="barText">--</div>
+<div class="disk-info" id="diskInfo">--</div>
+</div>
+<div class="card"><div class="card-title">📊 目录内容</div><div id="statsBox" style="font-size:12px;color:#9ca3af">加载中…</div></div>
+<div class="card">
+<div class="card-title">⚙️ 配置</div>
+<label>监听文件夹路径</label>
+<div class="path-row" style="margin-top:4px"><input id="watchDir" placeholder="/sdcard/Test"><button class="btn-secondary" onclick="openBrowser()" style="white-space:nowrap">浏览</button></div>
+<div class="row">
+<div><label>清理阈值 (GB)</label><input id="thresholdGb" type="number" min="1" value="50"></div>
+<div><label>检查间隔 (秒)</label><input id="intervalSec" type="number" min="10" value="60"></div>
+<div><label>Web 端口</label><input id="port" type="number" min="1024" max="65535" value="8899"></div>
+</div>
+<div class="btn-row"><button class="btn-primary" onclick="save()">保存配置</button><button class="btn-secondary" onclick="cleanNow()">立即清理</button></div>
+</div>
+<div class="card">
+<div class="card-title">🧪 测试工具</div>
+<div class="btn-row" style="margin-top:0;flex-wrap:wrap"><button class="btn-secondary" onclick="runTest('small')">生成小文件×3</button><button class="btn-secondary" onclick="runTest('mixed')">混合文件</button></div>
+<div class="btn-row" style="margin-top:8px"><button class="btn-secondary" onclick="runTest('big')">生成2GB大文件</button><button class="btn-secondary" onclick="runTest('clear')">清空目录</button></div>
+</div>
+</div>
+<div>
+<div class="card"><div class="card-title" style="display:flex;justify-content:space-between;align-items:center"><span>🗂️ 清理记录</span><button class="btn-secondary" style="padding:3px 10px;font-size:11px" onclick="loadCleanup(true)">刷新</button></div><div id="runList"><div class="empty">加载中…</div></div></div>
+</div>
+</div>
+<div id="msg"></div>
+</div>
+<script>
+const api=p=>fetch('/cgi-bin/api.cgi?'+new URLSearchParams(p)).then(r=>r.json());
+let lastCleanupHash='';
+function fmt(b){b=Number(b)||0;if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(2)+' GB'}
+function extClass(e){if(!e)return'other';e=e.toLowerCase();if(['mp4','mkv','avi','img','zip','rar'].includes(e))return'img';if(['txt','log','csv'].includes(e))return'txt';if(['jpg','png','gif','webp'].includes(e))return'jpg';if(['mp3','flac','wav'].includes(e))return'mp3';return'other'}
+async function refresh(){try{const s=await api({action:'status'});const a=document.activeElement;if(a.id!=='watchDir')document.getElementById('watchDir').value=s.watchDir||'';if(a.id!=='thresholdGb')document.getElementById('thresholdGb').value=s.thresholdGb;if(a.id!=='intervalSec')document.getElementById('intervalSec').value=s.intervalSec;if(a.id!=='port')document.getElementById('port').value=s.port;document.getElementById('watchPath').textContent=s.watchDir||'(未设置)';document.getElementById('watchMeta').textContent='阈值 '+s.thresholdGb+' GB · 间隔 '+s.intervalSec+' 秒';document.getElementById('thresholdText').textContent=s.thresholdGb+' GB';const el=document.getElementById('size');el.textContent=fmt(s.currentBytes);const tb=Number(s.thresholdGb)*1073741824;const over=Number(s.currentBytes)>tb;el.classList.toggle('over',over);const pct=Math.min(100,Number(s.currentBytes)/tb*100);document.getElementById('barFill').style.width=pct+'%';document.getElementById('barFill').classList.toggle('over',over);document.getElementById('barText').textContent='已用 '+pct.toFixed(1)+'%';const dt=Number(s.diskTotal)||0,df=Number(s.diskFree)||0;if(dt>0)document.getElementById('diskInfo').innerHTML='设备存储：共 '+fmt(dt)+' · 可用 <b>'+fmt(df)+'</b>'}catch(e){document.getElementById('watchPath').textContent='无法连接: '+e}}
+async function loadLog(){try{const l=await api({action:'log'});document.getElementById('log').textContent=(l||[]).slice().reverse().join('\n')||'(暂无日志)'}catch(e){}}
+function toggleLog(){const p=document.getElementById('logPanel');p.classList.toggle('open');if(p.classList.contains('open'))loadLog()}
+async function loadStats(){try{const s=await api({action:'stats'});if(!s||!s.categories){document.getElementById('statsBox').innerHTML='(无法读取)';return}const c=s.categories;const items=[['视频','si-video',c.video],['图片','si-image',c.image],['音频','si-audio',c.audio],['文档','si-doc',c.document],['压缩包','si-archive',c.archive],['字幕','si-sub',c.subtitle],['其他','si-other',c.other]];let h='<div style="margin-bottom:8px">共 <b>'+s.total+'</b> 个文件 · '+fmt(s.totalSize)+'</div><div class="stats-grid">';items.forEach(([n,cls,v])=>{if(v.count===0)return;h+='<div class="stat-item '+cls+'"><div class="si-name">'+n+'</div><div class="si-val">'+v.count+' 个</div><div class="si-size">'+fmt(v.size)+'</div></div>'});h+='</div>';document.getElementById('statsBox').innerHTML=h}catch(e){document.getElementById('statsBox').innerHTML='(加载失败)'}}
+async function loadCleanup(force){try{const r=await api({action:'cleanup'});if(!r||r.length===0){document.getElementById('runList').innerHTML='<div class="empty">暂无清理记录</div>';return}const hash=r.length+':'+r[r.length-1].time;if(!force&&hash===lastCleanupHash)return;lastCleanupHash=hash;const runs=[];let cur=null;for(let i=r.length-1;i>=0;i--){const it=r[i];if(it.summary){if(Number(it.deleted)>0){cur={summary:it,files:[]};runs.unshift(cur)}else cur=null}else if(cur){cur.files.unshift(it)}}if(runs.length===0){document.getElementById('runList').innerHTML='<div class="empty">暂无清理记录</div>';return}let h='';runs.forEach(run=>{const s=run.summary;h+='<div class="run-card open"><div class="run-head"><div class="time">'+s.time+'</div><div class="freed">删 '+s.deleted+' 个 · '+fmt(Number(s.freedBytes)||0)+'</div></div><div class="run-body">';run.files.forEach(f=>{const fd=encodeURIComponent(JSON.stringify(f));h+='<div class="file-row" onclick="showFileDetail(\''+fd+'\')"><div class="file-ext '+extClass(f.ext)+'">'+(f.ext||'?')+'</div><div class="file-name">'+(f.name||'')+'</div><div class="file-size">'+fmt(f.size)+'</div></div>'});h+='</div></div>'});document.getElementById('runList').innerHTML=h}catch(e){document.getElementById('runList').innerHTML='<div class="empty">加载失败</div>'}}
+function showFileDetail(enc){try{const f=JSON.parse(decodeURIComponent(enc));alert('文件名：'+f.name+'\n路径：'+f.file+'\n大小：'+fmt(f.size)+'\n时间：'+f.time)}catch(e){}}
+async function save(){const p={action:'save'};p.watchDir=document.getElementById('watchDir').value.trim();p.thresholdGb=document.getElementById('thresholdGb').value;p.intervalSec=document.getElementById('intervalSec').value;p.port=document.getElementById('port').value;const r=await api(p);if(r.ok===false){showMsg('❌ '+(r.error||'失败'));return}showMsg('✅ 已保存');setTimeout(refresh,800)}
+async function cleanNow(){await api({action:'clean'});showMsg('🧹 已触发清理…');setTimeout(()=>{refresh();loadCleanup(true)},2500)}
+async function runTest(mode){showMsg('⏳ 执行中…');try{const r=await api({action:'test',mode});if(r.ok===false){showMsg('❌ '+(r.error||'失败'));return}showMsg('✅ '+(r.msg||'完成'));setTimeout(()=>{refresh();loadCleanup(true)},mode==='big'?3000:1000)}catch(e){showMsg('❌ '+e)}}
+function showMsg(t){document.getElementById('msg').textContent=t;setTimeout(()=>document.getElementById('msg').textContent='',3000)}
+function copyLog(){navigator.clipboard.writeText(document.getElementById('log').textContent).then(()=>showMsg('日志已复制'))}
+let browserCurrent='/storage/emulated/0';
+async function openBrowser(){browserCurrent=document.getElementById('watchDir').value.trim()||'/storage/emulated/0';await loadDir(browserCurrent)}
+async function loadDir(path){browserCurrent=path;try{const r=await api({action:'browse',path});if(!r.dirs||r.dirs.length===0){document.getElementById('dirList').innerHTML='<div class="empty">(没有子文件夹)</div>';return}document.getElementById('dirList').innerHTML=r.dirs.map(d=>'<li onclick="loadDir(\''+(r.path==='/'?'':r.path)+'/'+d+'\')">📁 '+d+'</li>').join('')}catch(e){}}
+function goParent(){const p=browserCurrent.replace(/\/+$/,'');loadDir(p.includes('/')?p.substring(0,p.lastIndexOf('/'))||'/':'/')}
+function pickCurrent(){document.getElementById('watchDir').value=browserCurrent;showMsg('已选择 '+browserCurrent)}
+refresh();loadStats();loadCleanup(true);
+setInterval(()=>{refresh();loadStats();if(document.getElementById('logPanel').classList.contains('open'))loadLog();loadCleanup(false)},10000);
+</script>
+</body>
+</html>
