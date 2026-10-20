@@ -94,6 +94,10 @@
   .si-package .si-val { color: #8b5cf6; }
   .si-other .si-val { color: #9ca3af; }
 
+  .tree-box { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #6b7280;
+              white-space: pre-wrap; word-break: break-all; line-height: 1.7; margin-top: 8px;
+              background: #f9fafb; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; }
+
   .run-card { background: #f8fafc; border-radius: 10px; margin-bottom: 8px; overflow: hidden;
               box-shadow: none; }
   .run-card.open { background: #f1f5f9; }
@@ -184,6 +188,7 @@
     </div>
   </div>
 
+  <!-- 磁盘告警条 -->
   <div id="diskWarn" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"></div>
 
   <div class="layout">
@@ -249,17 +254,20 @@
       <button class="modal-close" onclick="closeModal('configModal')">×</button>
     </div>
     <div class="modal-body">
+      <!-- 配置切换 -->
       <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">📋 当前配置</label>
       <select id="cfgProfileSel" onchange="onProfileSelChange()" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#fff;box-sizing:border-box;cursor:pointer;margin-bottom:6px"></select>
       <div id="cfgMeta" style="font-size:11px;color:#9ca3af;margin-bottom:14px"></div>
       <input id="cfgProfileName" type="hidden">
 
+      <!-- 监听目录 -->
       <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">📁 监听目录</label>
       <div class="path-row" style="margin-bottom:14px">
         <input id="watchDir" placeholder="" style="flex:1;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px" onblur="validateWatchDir()">
         <button class="btn-secondary" onclick="openBrowser()" style="white-space:nowrap;padding:10px 14px">浏览</button>
       </div>
 
+      <!-- 阈值与保留值 -->
       <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">📊 清理策略</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div>
@@ -271,11 +279,14 @@
           <input id="keepGb" type="number" min="0" step="0.1" value="30" oninput="updateStrategyPreview()" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box">
         </div>
       </div>
+      <!-- 校验提醒 -->
       <div id="cfgWarn" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px"></div>
+      <!-- 策略预览条 -->
       <div style="background:#f9fafb;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:#6b7280">
         <span id="cfgStrategy">超过 50 GB 时自动清理，删到 30 GB 停止</span>
       </div>
 
+      <!-- 间隔与端口 -->
       <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px">
         <div>
           <div style="font-size:11px;color:#6b7280;margin-bottom:4px">检查间隔 (秒)</div>
@@ -283,6 +294,7 @@
         </div>
       </div>
 
+      <!-- 重命名/删除 -->
       <div style="border-top:1px solid #f3f4f6;padding-top:12px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-secondary" onclick="renameProfile()" style="color:#8b5cf6;border-color:#ddd6fe;font-size:12px">✏️ 重命名</button>
         <button class="btn-secondary" onclick="deleteProfile()" style="color:#ef4444;border-color:#fecaca;font-size:12px">🗑️ 删除</button>
@@ -305,7 +317,7 @@
   <div class="modal">
     <div class="modal-head"><h3>🧪 测试工具</h3><button class="modal-close" onclick="closeModal('testModal')">×</button></div>
     <div class="modal-body">
-      <div style="font-size:12px;color:#6b7280;margin-bottom:14px">测试自动切换到测试配置，完成后切回。测试目录：/sdcard/FolderCleanerTest</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:14px">生成的文件会写入「当前监听的目录」（未设置时写入 /sdcard/FolderCleanerTest），保存后顶栏占用会立刻上涨；「清空测试目录」只清理 /sdcard/FolderCleanerTest。</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn-secondary" onclick="runTest('small')">📄 生成 3 个小文件</button>
         <button class="btn-secondary" onclick="runTest('mixed')">🎬 生成混合文件 (mp4/jpg/mp3/txt)</button>
@@ -349,6 +361,16 @@ function fmt(bytes) {
   return (bytes / 1073741824).toFixed(2) + ' GB';
 }
 
+function extClass(ext) {
+  if (!ext) return 'other';
+  ext = ext.toLowerCase();
+  if (['img','zip','rar','mp4','mkv','avi'].includes(ext)) return 'img';
+  if (['txt','log','csv','json'].includes(ext)) return 'txt';
+  if (['jpg','png','gif','webp','bmp'].includes(ext)) return 'jpg';
+  if (['mp3','flac','wav','aac'].includes(ext)) return 'mp3';
+  return 'other';
+}
+
 function fileIcon(ext) {
   if (!ext) return '📄';
   ext = ext.toLowerCase();
@@ -377,6 +399,27 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 function openConfig() {
   const sel = document.getElementById('cfgProfileSel');
   sel.innerHTML = '';
+  // 尚无任何配置：直接进入“新建配置”流程
+  if (!state.profiles || state.profiles.length === 0) {
+    const addOpt = document.createElement('option');
+    addOpt.value = '__add__';
+    addOpt.textContent = '➕ 新建配置';
+    sel.appendChild(addOpt);
+    sel.value = '__add__';
+    fillConfigForm('');
+    openModal('configModal');
+    showNameDialog('新建配置', function(name) {
+      if (!name) { toast('已取消，未创建配置', 'info'); return; }
+      if ((state.profiles||[]).some(p => p.name === name)) { toast('配置「' + name + '」已存在', 'error'); return; }
+      state.profiles = (state.profiles||[]).concat([{name, watchDir:'', thresholdGb:0, keepGb:0, intervalSec:0}]);
+      state.active = name;
+      openConfig();
+      document.getElementById('cfgProfileSel').value = name;
+      fillConfigForm(name);
+      toast('已创建配置「' + name + '」，填写后保存', 'success');
+    });
+    return;
+  }
   (state.profiles || []).forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.name;
@@ -416,13 +459,13 @@ function showNameDialog(title, cb) {
     dlg = document.createElement('div');
     dlg.id = 'nameDialog';
     dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200';
-    dlg.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,.15)">' +
-      '<div style="font-size:14px;font-weight:600;margin-bottom:12px" id="nameDlgTitle"></div>' +
-      '<input id="nameDlgInput" type="text" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:14px" placeholder="输入名称">' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-      '<button class="btn-secondary" id="nameDlgCancel" style="padding:8px 16px">取消</button>' +
-      '<button class="btn-primary" id="nameDlgOk" style="padding:8px 16px">确定</button>' +
-      '</div></div>';
+    dlg.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,.15)">'
+      + '<div style="font-size:14px;font-weight:600;margin-bottom:12px" id="nameDlgTitle"></div>'
+      + '<input id="nameDlgInput" type="text" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:14px" placeholder="输入名称">'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+      + '<button class="btn-secondary" id="nameDlgCancel" style="padding:8px 16px">取消</button>'
+      + '<button class="btn-primary" id="nameDlgOk" style="padding:8px 16px">确定</button>'
+      + '</div></div>';
     document.body.appendChild(dlg);
   }
   document.getElementById('nameDlgTitle').textContent = title;
@@ -499,6 +542,7 @@ function updateStrategyPreview() {
   } else {
     strat.textContent = '超过 ' + tg + ' GB 时自动清理，删到阈值以下停止';
   }
+  // 校验
   const warns = [];
   if (kg >= tg) warns.push('保留值必须小于阈值');
   const freeGb = (state.diskFree || 0) / 1073741824;
@@ -518,6 +562,7 @@ function updateStrategyPreview() {
 
 async function renameProfile() {
   const old = document.getElementById('cfgProfileSel').value;
+  if (old === '默认') { toast('不能重命名默认配置'); return; }
   showNameDialog('重命名配置', async function(newName) {
     if (!newName || newName === old) return;
     try {
@@ -531,6 +576,7 @@ async function renameProfile() {
 
 async function deleteProfile() {
   const name = document.getElementById('cfgProfileSel').value;
+  if (name === 'default') { toast('不能删除默认配置'); return; }
   if (!confirm(`确定删除配置 "${name}"？`)) return;
   try {
     const r = await api({ action: 'delete', name });
@@ -550,6 +596,7 @@ async function refresh() {
     document.getElementById('watchPath').textContent = wd || '(未设置监听目录)';
     document.getElementById('watchMeta').textContent = '阈值 ' + s.thresholdGb + ' GB · 保留 ' + (s.keepGb||0) + ' GB · 间隔 ' + s.intervalSec + ' 秒';
     document.getElementById('thresholdText').textContent = s.thresholdGb + ' GB';
+    // 路径为空时停止监听标签
     const watchTag = document.getElementById('watchingTag');
     if (!wd) {
       watchTag.textContent = '⚠️ 未设置目录';
@@ -569,19 +616,21 @@ async function refresh() {
     const pct = Math.min(100, Number(s.currentBytes) / tb * 100);
     document.getElementById('barFill').style.width = pct + '%';
     document.getElementById('barFill').classList.toggle('over', over);
+    // 保留值标记
     const mark = document.getElementById('keepMark');
-    if (kb > 0 && tb > 0) {
+    if (kb > 0) {
       mark.style.display = 'block';
       mark.style.left = (kb/tb*100) + '%';
       mark.title = '保留值: ' + s.keepGb + ' GB';
     } else {
       mark.style.display = 'none';
     }
-    document.getElementById('barText').textContent = '已用 ' + pct.toFixed(1) + '%' + (kb>0 ? ' · 保留线 ' + s.keepGb + 'GB' : '');
+    document.getElementById('barText').textContent = '已用 ' + pct.toFixed(1) + '%' + (kb>0 ? ' · 保留线 ' + s.keepGb + 'GB (' + (kb/tb*100).toFixed(0) + '%)' : '');
     const dt = Number(s.diskTotal) || 0, df = Number(s.diskFree) || 0;
     state.diskFree = df;
     state.diskTotal = dt;
     if (dt > 0) document.getElementById('diskInfo').innerHTML = '设备存储：共 ' + fmt(dt) + ' · 可用 <b>' + fmt(df) + '</b>';
+    // 磁盘空间告警：剩余 < 5% 或 < 2GB
     const warn = document.getElementById('diskWarn');
     if (dt > 0) {
       const pct = df / dt * 100;
@@ -592,6 +641,7 @@ async function refresh() {
         warn.style.display = 'none';
       }
     }
+    // daemon 状态
     document.getElementById('daemonStatus').textContent = '守护进程：运行中 · 配置「' + s.activeProfile + '」';
 
     const sel = document.getElementById('profileSel');
@@ -619,6 +669,7 @@ function toggleLog() {
   localStorage.setItem('fs_log_open', p.classList.contains('open') ? '1' : '0');
   if (p.classList.contains('open')) loadLog();
 }
+// 启动时恢复日志展开状态
 if (localStorage.getItem('fs_log_open') === '1') {
   document.getElementById('logPanel').classList.add('open');
   loadLog();
@@ -640,6 +691,7 @@ async function loadStats(force) {
   try {
     const s = await api({ action: 'stats' });
     if (!s || !s.categories) { document.getElementById('statsBox').innerHTML = '(无法读取)'; return; }
+    // stats 缓存：path+fileCount 没变就跳过重渲染
     const cacheKey = (s.path||'') + '|' + s.total;
     if (cacheKey === lastStatsCache) return;
     lastStatsCache = cacheKey;
@@ -691,6 +743,7 @@ async function loadCleanup(force) {
     let html = '';
     let lastDay = '';
     runs.forEach((run, idx) => {
+      // 按日期分组标题
       const day = run.time.split(' ')[0];
       const today = new Date().toISOString().slice(0,10);
       const yest = new Date(Date.now()-86400000).toISOString().slice(0,10);
@@ -716,7 +769,7 @@ async function loadCleanup(force) {
         const ext = (f.name.split('.').pop() || '?').toLowerCase();
         const icon = fileIcon(ext);
         const typeLabel = extLabel(ext);
-        html += '<div class="file-row" onclick="toggleFileDetail(this">'
+        html += '<div class="file-row" onclick="toggleFileDetail(this)">'
           + '<div class="file-icon">' + icon + '</div>'
           + '<div class="file-name">' + f.name + '</div>'
           + '<div class="file-size">' + fmt(f.size) + '</div>'
@@ -764,6 +817,12 @@ function extLabel(ext) {
   if (['srt','ass','ssa','vtt'].includes(ext)) return '字幕';
   if (['apk','exe','msi','dmg','deb'].includes(ext)) return '安装包';
   return '文件';
+}
+
+function toggleTree() {
+  const tb = document.getElementById('treeBox');
+  tb.style.display = tb.style.display === 'none' ? 'block' : 'none';
+  event.target.textContent = tb.style.display === 'none' ? '展开目录树' : '收起目录树';
 }
 
 async function save() {
@@ -825,14 +884,15 @@ async function cleanNow() {
 }
 
 async function runTest(mode) {
-  const names = { small: '生成小文件', mixed: '生成混合文件', big: '生成2GB大文件', clear: '清空目录' };
+  const names = { small: '生成小文件', mixed: '生成混合文件', mid5: '生成5个50MB文件', big: '生成2GB大文件', clear: '清空目录' };
   toast('⏳ ' + (names[mode] || '执行中') + '…', 'info');
   try {
     const r = await api({ action: 'test', mode });
     if (r.ok === false) { toast('❌ ' + (r.error || '失败'), 'error'); return; }
     toast('✅ ' + (r.msg || '完成'), 'success');
     closeModal('testModal');
-    setTimeout(() => { refresh(); loadStats(); loadCleanup(true); }, mode === 'big' ? 3000 : 1000);
+    const wait = mode === 'big' ? 3000 : (mode === 'mid5' ? 2500 : 1000);
+    setTimeout(() => { refresh(); loadStats(); loadCleanup(true); }, wait);
   } catch (e) { toast('❌ ' + e, 'error'); }
 }
 
@@ -886,6 +946,7 @@ function toggleTheme() {
   document.body.classList.toggle('dark');
   localStorage.setItem('fs_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
 }
+// 启动时恢复主题
 if (localStorage.getItem('fs_theme') === 'dark') document.body.classList.add('dark');
 
 function exportConfig() {
@@ -905,6 +966,7 @@ async function importConfig(input) {
   try {
     const data = JSON.parse(text);
     if (!data.profiles || !Array.isArray(data.profiles)) throw new Error('格式不对');
+    // 逐个导入配置
     for (const p of data.profiles) {
       await api({
         action: 'save',
@@ -923,7 +985,14 @@ async function importConfig(input) {
   input.value = '';
 }
 
-refresh();
+// 首次加载：若还没有任何配置，自动弹出配置页引导新建
+(async function initFirst() {
+  await refresh();
+  if ((state.profiles || []).length === 0) {
+    toast('欢迎使用，请先创建第一个配置', 'info');
+    openConfig();
+  }
+})();
 loadStats();
 loadCleanup(true);
 setInterval(() => {
