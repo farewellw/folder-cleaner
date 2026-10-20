@@ -1,4 +1,4 @@
-# Folder Cleaner · 文件夹自动清理
+# Folder Cleaner · 文件夹自动清理 豆包老师完成
 
 Magisk / KernelSU 模块：监听指定文件夹，总大小超过阈值时自动删除最旧的文件。内置中文 Web UI。
 
