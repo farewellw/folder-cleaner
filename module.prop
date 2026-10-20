@@ -1,0 +1,6 @@
+id=folder_cleaner
+name=文件夹自动清理 (WebUI)
+version=v1.3.4
+versionCode=16
+author=Doubao
+description=监听指定文件夹，总大小超过阈值时自动删除最旧的文件。内置中文 Web UI（默认端口 8899）。
